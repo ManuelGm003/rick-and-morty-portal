@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Rick and Morty API - Rendimiento y Peticiones</title>
+    <style>
+        :root {
+            --bg-body: #202329;
+            --bg-card: #3c3e44;
+            --text-main: #f5f5f5;
+            --text-secondary: #9e9e9e;
+            --rm-green: #bfde42;
+            --rm-blue: #00b5cc;
+            --status-alive: #55cc44;
+            --status-dead: #d63d2e;
+            --status-unknown: #9e9e9e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--rm-green);
+            padding-bottom: 15px;
+        }
+
+        header h1 {
+            color: var(--rm-green);
+            text-shadow: 0 0 10px rgba(191, 222, 66, 0.5);
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 1. Panel de Control / Laboratorio de Peticiones en Vivo */
+        .control-panel {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #555;
+        }
+
+        .search-group {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        input,
+        select {
+            padding: 10px 15px;
+            border: 2px solid #555;
+            border-radius: 8px;
+            font-size: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            outline: none;
+        }
+
+        input {
+            flex: 1;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--rm-blue);
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--rm-green);
+            color: #202329;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: white;
+            box-shadow: 0 0 10px var(--rm-green);
+        }
+
+        /* 2. Medición de Rendimiento */
+        .metrics-bar {
+            background: #1a1d22;
+            color: var(--rm-blue);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            border: 1px solid var(--rm-blue);
+        }
+
+        .metric-item strong {
+            color: white;
+        }
+
+        /* 4. Renderizado Dinámico: Tarjeta de Personaje */
+        .character-display {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            min-height: 300px;
+        }
+
+        @media (max-width: 700px) {
+            .character-display {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+
+        .char-img-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .char-info {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .char-info h2 {
+            color: var(--rm-green);
+            font-size: 1.8rem;
+            text-transform: capitalize;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .info-value {
+            color: var(--text-main);
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* 5. Visor de Código & JSON con Pestañas */
+        .inspector-panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #555;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid #555;
+        }
+
+        .tab-btn {
+            padding: 12px 25px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--text-secondary);
+            flex: 1;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .tab-btn.active {
+            color: var(--rm-green);
+            border-bottom: 3px solid var(--rm-green);
+            background: rgba(191, 222, 66, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            background: #1a1d22;
+            color: #e2e8f0;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Utility class for JSON syntax highlighting basic */
+        .json-key {
+            color: #818cf8;
+        }
+
+        .json-string {
+            color: #a78bfa;
+        }
+
+        .json-number {
+            color: #fb923c;
+        }
+
+        .json-boolean {
+            color: #22d3ee;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Rick and Morty API Lab 🪐</h1>
+        <p>Peticiones en vivo, medición de rendimiento, doble implementación (Async/Promises) y visor de datos</p>
+    </header>
+
+    <div class="container">
+        <!-- 1. Panel de Control (Peticiones en vivo) -->
+        <div class="control-panel">
+            <div class="search-group">
+                <input type="text" id="char-input" placeholder="Ej: rick, morty, summer, poopybutthole..." value="rick">
+                <button id="search-btn">Consultar API</button>
+            </div>
+            <div>
+                <label for="method-select"
+                    style="font-size: 13px; font-weight: bold; color: var(--text-secondary);">Implementación (Punto
+                    3):</label>
+                <select id="method-select">
+                    <option value="async">Async / Await</option>
+                    <option value="promise">Promesas (.then / .catch)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2. Medición de Rendimiento -->
+        <div class="metrics-bar" id="metrics-bar">
+            <span class="metric-item">📡 HTTP: <strong>Esperando...</strong></span>
+            <span class="metric-item">⏱️ Latencia: <strong>-- ms</strong></span>
+            <span class="metric-item">📦 Tipo: <strong>--</strong></span>
+        </div>
+
+        <!-- 4. Renderizado Dinámico de Tarjeta -->
+        <div class="character-display" id="char-card">
+            <div class="char-img-container">
+                <img id="char-img" src="" alt="Cargando personaje...">
+            </div>
+            <div class="char-info">
+                <h2 id="char-name">Nombre Personaje</h2>
+
+                <div class="status-container">
+                    <span id="status-dot" class="status-dot"></span>
+                    <span id="status-text">Status - Especie</span>
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <span class="info-label">Género:</span>
+                    <span id="char-gender" class="info-value">--</span>
+
+                    <span class="info-label">Origen conocido:</span>
+                    <span id="char-origin" class="info-value">--</span>
+
+                    <span class="info-label">Última ubicación vista:</span>
+                    <span id="char-location" class="info-value">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Visor de Código & JSON con Pestañas -->
+        <div class="inspector-panel">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('json')">Respuesta JSON Bruta</button>
+                <button class="tab-btn" onclick="switchTab('code')">Código JavaScript Ejecutado (Punto 3)</button>
+            </div>
+            <div id="tab-json" class="tab-content active">Realiza una consulta para inspeccionar el JSON...</div>
+            <div id="tab-code" class="tab-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Referencias al DOM
+        const input = document.getElementById('char-input');
+        const btn = document.getElementById('search-btn');
+        const methodSelect = document.getElementById('method-select');
+        const metricsBar = document.getElementById('metrics-bar');
+
+        const charImg = document.getElementById('char-img');
+        const charName = document.getElementById('char-name');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const charGender = document.getElementById('char-gender');
+        const charOrigin = document.getElementById('char-origin');
+        const charLocation = document.getElementById('char-location');
+
+        const jsonTab = document.getElementById('tab-json');
+        const codeTab = document.getElementById('tab-code');
+
+        const API_BASE = 'https://rickandmortyapi.com/api/character';
+
+        // 3 y 5. Snippets de Código para el visor
+        const codeSnippets = {
+            async: `// [Punto 3] Implementación usando Async / Await
+async function fetchCharacterAsync(query) {
+    const startTime = performance.now(); // [Punto 2] Inicio medición
+    try {
+        // La API de R&M devuelve un array en 'results' al buscar por nombre
+        const response = await fetch(\`\${API_BASE}/?name=\${query}\`);
+        const endTime = performance.now(); // [Punto 2] Fin medición
+        
+        if (!response.ok) throw new Error('No encontrado');
+        
+        const data = await response.json();
+        const character = data.results[0]; // Tomamos el primer resultado
+        
+        const latency = Math.round(endTime - startTime);
+        updateUI(character, response.status, latency, response.headers.get('content-type'));
+    } catch (error) {
+        showError();
+    }
+}`,
+            promise: `// [Punto 3] Implementación usando Promesas (.then / .catch)
+function fetchCharacterPromise(query) {
+    const startTime = performance.now(); // [Punto 2] Inicio medición
+    
+    fetch(\`\${API_BASE}/?name=\${query}\`)
+        .then(response => {
+            const endTime = performance.now(); // [Punto 2] Fin medición
+            if (!response.ok) throw new Error('No encontrado');
+            
+            // Calculamos latencia antes de procesar el JSON
+            const latency = Math.round(endTime - startTime);
+            const contentType = response.headers.get('content-type');
+            const status = response.status;
+
+            return response.json().then(data => ({
+                character: data.results[0], // Tomamos el primer resultado
+                status, latency, contentType
+            }));
+        })
+        .then(result => {
+            updateUI(result.character, result.status, result.latency, result.contentType);
+        })
+        .catch(error => {
+            showError();
+        });
+}`
+        };
+
+        // Función principal que decide qué método usar (Punto 3)
+        async function loadCharacter() {
+            const query = input.value.toLowerCase().trim();
+            if (!query) return;
+
+            const method = methodSelect.value;
+            // Actualizar pestaña de código inmediatamente
+            codeTab.textContent = codeSnippets[method];
+
+            // Ejecutar la implementación seleccionada
+            if (method === 'async') {
+                await fetchCharacterAsync(query);
+            } else {
+                fetchCharacterPromise(query);
+            }
+        }
+
+        // --- PUNTO 3: DOBLE IMPLEMENTACIÓN ---
+
+        // A. Implementación Async/Await
+        async function fetchCharacterAsync(query) {
+            const startTime = performance.now(); // [Punto 2]
+            try {
+                const response = await fetch(`${API_BASE}/?name=${query}`);
+                const endTime = performance.now(); // [Punto 2]
+
+                if (!response.ok) throw new Error('No encontrado');
+
+                const data = await response.json();
+                const character = data.results[0];
+
+                const latency = Math.round(endTime - startTime);
+                updateUI(character, response.status, latency, response.headers.get('content-type'));
+            } catch (error) {
+                showError();
+            }
+        }
+
+        // B. Implementación Promesas
+        function fetchCharacterPromise(query) {
+            const startTime = performance.now(); // [Punto 2]
+
+            fetch(`${API_BASE}/?name=${query}`)
+                .then(response => {
+                    const endTime = performance.now(); // [Punto 2]
+                    if (!response.ok) throw new Error('No encontrado');
+
+                    const latency = Math.round(endTime - startTime);
+                    const contentType = response.headers.get('content-type');
+                    const status = response.status;
+
+                    return response.json().then(data => ({
+                        character: data.results[0],
+                        status, latency, contentType
+                    }));
+                })
+                .then(result => {
+                    updateUI(result.character, result.status, result.latency, result.contentType);
+                })
+                .catch(error => {
+                    showError();
+                });
+        }
+
+        // --- PUNTO 4: RENDERIZADO DINÁMICO ---
+        function updateUI(character, status, latency, contentType) {
+            // 1. Actualizar Métricas (Punto 2)
+            metricsBar.innerHTML = `
+                <span class="metric-item">📡 HTTP: <strong>${status} OK</strong></span>
+                <span class="metric-item">⏱️ Latencia: <strong>${latency} ms</strong></span>
+                <span class="metric-item">📦 Tipo: <strong>${contentType.split(';')[0]}</strong></span>
+            `;
+
+            // 2. Actualizar Tarjeta (Punto 4)
+            charName.textContent = character.name;
+            charImg.src = character.image;
+            charGender.textContent = character.gender;
+            charOrigin.textContent = character.origin.name;
+            charLocation.textContent = character.location.name;
+
+            // Estado (Alive/Dead)
+            statusText.textContent = `${character.status} - ${character.species}`;
+            statusDot.className = 'status-dot'; // reset
+            const s = character.status.toLowerCase();
+            if (s === 'alive') statusDot.classList.add('status-alive');
+            else if (s === 'dead') statusDot.classList.add('status-dead');
+            else statusDot.classList.add('status-unknown');
+
+            // 3. Actualizar JSON (Punto 5)
+            jsonTab.textContent = JSON.stringify(character, null, 2);
+        }
+
+        function showError() {
+            charName.textContent = "No encontrado en el Multiverso ⚠️";
+            charImg.src = "https://rickandmortyapi.com/api/character/avatar/19.jpeg"; // Imagen de Get Schwifty Rick como fallback
+            statusDot.className = 'status-dot status-unknown';
+            statusText.textContent = "Desconocido";
+            charGender.textContent = "--";
+            charOrigin.textContent = "--";
+            charLocation.textContent = "--";
+
+            jsonTab.textContent = `{ "error": "Personaje no encontrado. Intenta con otro nombre, Jerry." }`;
+            metricsBar.innerHTML = `<span class="metric-item">📡 HTTP: <strong>404 Not Found</strong></span><span class="metric-item">⏱️ Latencia: <strong>-- ms</strong></span><span class="metric-item">📦 Tipo: <strong>application/json</strong></span>`;
+        }
+
+        // --- PUNTO 5: VISOR DE PESTAÑAS ---
+        window.switchTab = function (tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (tabName === 'json') {
+                document.querySelector('.tabs button:nth-child(1)').classList.add('active');
+                jsonTab.classList.add('active');
+            } else {
+                document.querySelector('.tabs button:nth-child(2)').classList.add('active');
+                codeTab.classList.add('active');
+            }
+        };
+
+        // Eventos
+        btn.addEventListener('click', loadCharacter);
+        input.addEventListener('keypress', (e) => { if (e.key === 'Enter') loadCharacter(); });
+
+        // Carga inicial (Punto 1)
+        loadCharacter();
+    </script>
+</body>
+
+</html>
